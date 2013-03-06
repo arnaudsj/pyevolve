@@ -11,11 +11,11 @@ Default Parameters
 -------------------------------------------------------------
 
 *Number of Generations*
-  
+
    Default is 100 generations
 
 *Mutation Rate*
-   
+
    Default is 0.02, which represents 0.2%
 
 *Crossover Rate*
@@ -43,7 +43,7 @@ Default Parameters
 *Migration Adapter*
 
    Default is **None**
-   
+
 *Interactive Mode*
 
    Default is **True**
@@ -75,7 +75,9 @@ from time  import time
 from types import BooleanType
 from sys   import platform as sys_platform
 from sys   import stdout as sys_stdout
+from sys   import exit
 
+import signal
 import code
 import pyevolve
 
@@ -120,7 +122,7 @@ def ConvergenceCriteria(ga_engine):
    """
    pop = ga_engine.getPopulation()
    return pop[0] == pop[len(pop)-1]
-   
+
 def RawStatsCriteria(ga_engine):
    """ Terminate the evolution based on the raw stats
 
@@ -174,13 +176,13 @@ class GSimpleGA:
    stepCallback = None
    """ This is the :term:`step callback function` slot,
    if you want to set the function, you must do this: ::
-      
+
       def your_func(ga_engine):
          # Here you have access to the GA Engine
          return False
 
       ga_engine.stepCallback.set(your_func)
-      
+
    now *"your_func"* will be called every generation.
    When this function returns True, the GA Engine will stop the evolution and show
    a warning, if is False, the evolution continues.
@@ -191,7 +193,7 @@ class GSimpleGA:
    termination criteria, you must do this: ::
 
       ga_engine.terminationCriteria.set(GSimpleGA.ConvergenceCriteria)
-      
+
    Now, when you run your GA, it will stop when the population converges.
 
    There are those termination criteria functions: :func:`GSimpleGA.RawScoreCriteria`, :func:`GSimpleGA.ConvergenceCriteria`, :func:`GSimpleGA.RawStatsCriteria`, :func:`GSimpleGA.FitnessStatsCriteria`
@@ -214,7 +216,7 @@ class GSimpleGA:
 
       if type(interactiveMode) != BooleanType:
          Util.raiseException("Interactive Mode option must be True or False", TypeError)
-      
+
       if not isinstance(genome, GenomeBase):
          Util.raiseException("The genome must be a GenomeBase subclass", TypeError)
 
@@ -230,7 +232,7 @@ class GSimpleGA:
       # Adapters
       self.dbAdapter        = None
       self.migrationAdapter = None
-      
+
       self.time_init       = None
       self.interactiveMode = interactiveMode
       self.interactiveGen  = -1
@@ -251,19 +253,19 @@ class GSimpleGA:
          if  isinstance(self.internalPop.oneSelfGenome, classes):
             self.setGPMode(True)
             break
-      
+
       logging.debug("A GA Engine was created, nGenerations=%d", self.nGenerations)
 
    def setGPMode(self, bool_value):
       """ Sets the Genetic Programming mode of the GA Engine
-      
+
       :param bool_value: True or False
       """
       self.GPMode = bool_value
 
    def getGPMode(self):
       """ Get the Genetic Programming mode of the GA Engine
-      
+
       :rtype: True or False
       """
       return self.GPMode
@@ -273,7 +275,7 @@ class GSimpleGA:
 
       Example:
          >>> ga_engine(freq_stats=10)
-         
+
       .. versionadded:: 0.6
          The callable method.
       """
@@ -295,7 +297,7 @@ class GSimpleGA:
          Added the *setParams* method.
       """
       self.internalParams.update(args)
-   
+
    def getParam(self, key, nvl=None):
       """ Gets an internal parameter
 
@@ -314,7 +316,7 @@ class GSimpleGA:
    def setInteractiveGeneration(self, generation):
       """ Sets the generation in which the GA must enter in the
       Interactive Mode
-      
+
       :param generation: the generation number, use "-1" to disable
 
       .. versionadded::0.6
@@ -327,7 +329,7 @@ class GSimpleGA:
    def getInteractiveGeneration(self):
       """ returns the generation in which the GA must enter in the
       Interactive Mode
-      
+
       :rtype: the generation number or -1 if not set
 
       .. versionadded::0.6
@@ -339,7 +341,7 @@ class GSimpleGA:
       """ Set the number of best individuals to copy to the next generation on the elitism
 
       :param numreplace: the number of individuals
-      
+
       .. versionadded:: 0.6
          The *setElitismReplacement* method.
 
@@ -351,12 +353,12 @@ class GSimpleGA:
 
    def setInteractiveMode(self, flag=True):
       """ Enable/disable the interactive mode
-      
+
       :param flag: True or False
 
       .. versionadded: 0.6
          The *setInteractiveMode* method.
-      
+
       """
       if type(flag) != BooleanType:
          Util.raiseException("Interactive Mode option must be True or False", TypeError)
@@ -380,7 +382,7 @@ class GSimpleGA:
          ret+= "\t" + slot.__repr__()
       ret+="\n"
       return ret
-   
+
    def setMultiProcessing(self, flag=True, full_copy=False):
       """ Sets the flag to enable/disable the use of python multiprocessing module.
       Use this option when you have more than one core on your CPU and when your
@@ -393,12 +395,12 @@ class GSimpleGA:
 
       Pyevolve uses the **multiprocessing** to execute the evaluation function over
       the individuals, so the use of this feature will make sense if you have a
-      truly slow evaluation function (which is commom in GAs).      
+      truly slow evaluation function (which is commom in GAs).
 
       The parameter "full_copy" defines where the individual data should be copied back
       after the evaluation or not. This parameter is useful when you change the
       individual in the evaluation function.
-      
+
       :param flag: True (default) or False
       :param full_copy: True or False (default)
 
@@ -437,7 +439,7 @@ class GSimpleGA:
 
    def setDBAdapter(self, dbadapter=None):
       """ Sets the DB Adapter of the GA Engine
-      
+
       :param dbadapter: one of the :mod:`DBAdapters` classes instance
 
       .. warning:: the use the of a DB Adapter can reduce the speed performance of the
@@ -563,7 +565,7 @@ class GSimpleGA:
 
       """
       return self.internalPop.bestRaw()
-  
+
    def worstIndividual(self):
       """ Returns the population worst individual
 
@@ -597,7 +599,7 @@ class GSimpleGA:
       """ Initializes the GA Engine. Create and initialize population """
       self.internalPop.create(minimax=self.minimax)
       self.internalPop.initialize(ga_engine=self)
-      logging.debug("The GA Engine was initialized !")      
+      logging.debug("The GA Engine was initialized !")
 
    def getPopulation(self):
       """ Return the internal population of GA Engine
@@ -606,7 +608,7 @@ class GSimpleGA:
 
       """
       return self.internalPop
-   
+
    def getStatistics(self):
       """ Gets the Statistics class instance of current generation
 
@@ -622,18 +624,18 @@ class GSimpleGA:
 
       newPop = GPopulation(self.internalPop)
       logging.debug("Population was cloned.")
-      
+
       size_iterate = len(self.internalPop)
 
       # Odd population size
       if size_iterate % 2 != 0: size_iterate -= 1
 
       crossover_empty = self.select(popID=self.currentGeneration).crossover.isEmpty()
-      
+
       for i in xrange(0, size_iterate, 2):
          genomeMom = self.select(popID=self.currentGeneration)
          genomeDad = self.select(popID=self.currentGeneration)
-         
+
          if not crossover_empty and self.pCrossover >= 1.0:
             for it in genomeMom.crossover.applyFunctions(mom=genomeMom, dad=genomeDad, count=2):
                (sister, brother) = it
@@ -691,7 +693,7 @@ class GSimpleGA:
       self.currentGeneration += 1
 
       return (self.currentGeneration == self.nGenerations)
-   
+
    def printStats(self):
       """ Print generation statistics
 
@@ -714,7 +716,7 @@ class GSimpleGA:
       total_time = time()-self.time_init
       print "Total time elapsed: %.3f seconds." % total_time
       return total_time
-   
+
    def dumpStatsDB(self):
       """ Dumps the current statistics to database adapter """
       logging.debug("Dumping stats to the DB Adapter")
@@ -758,94 +760,110 @@ class GSimpleGA:
       self.internalPop.sort()
       logging.debug("Starting loop over evolutionary algorithm.")
 
-      try:      
-         while True:
-            if self.migrationAdapter:
-               logging.debug("Migration adapter: exchange")
-               self.migrationAdapter.exchange()
-               self.internalPop.clearFlags()
-               self.internalPop.sort()
 
-            if not self.stepCallback.isEmpty():
-               for it in self.stepCallback.applyFunctions(self):
-                  stopFlagCallback = it
+      def stop_evolution(s, f):
+         #print signal, frame
 
-            if not self.terminationCriteria.isEmpty():
-               for it in self.terminationCriteria.applyFunctions(self):
-                  stopFlagTerminationCriteria = it
+         if s == signal.SIGINT:
+            if self.internalPop.multiProcessing[0]:
+               logging.debug("CTRL-C detected, finishing evolution (stopping parallel jobs).")
+               self.internalPop.proc_pool.terminate()
+               self.internalPop.proc_pool.join()
+            else:
+               logging.debug("CTRL-C detected, finishing evolution.")
+            if freq_stats: print "\n\tA break was detected, you have interrupted the evolution !\n"
 
+         if freq_stats != 0:
+            self.printStats()
+            self.printTimeElapsed()
+
+         if self.dbAdapter:
+            logging.debug("Closing the DB Adapter")
+            if not (self.currentGeneration % self.dbAdapter.getStatsGenFreq() == 0):
+               self.dumpStatsDB()
+            self.dbAdapter.commitAndClose()
+
+         if self.migrationAdapter:
+            logging.debug("Closing the Migration Adapter")
+            if freq_stats: print "Stopping the migration adapter... ",
+            self.migrationAdapter.stop()
+            if freq_stats: print "done !"
+
+         if s == signal.SIGINT:
+            print self.bestIndividual()
+            exit(0)
+         else:
+            return self.bestIndividual()
+
+      signal.signal(signal.SIGINT, stop_evolution)
+
+      while True:
+         if self.migrationAdapter:
+            logging.debug("Migration adapter: exchange")
+            self.migrationAdapter.exchange()
+            self.internalPop.clearFlags()
+            self.internalPop.sort()
+
+         if not self.stepCallback.isEmpty():
+            for it in self.stepCallback.applyFunctions(self):
+               stopFlagCallback = it
+
+         if not self.terminationCriteria.isEmpty():
+            for it in self.terminationCriteria.applyFunctions(self):
+               stopFlagTerminationCriteria = it
+
+         if freq_stats:
+            if (self.currentGeneration % freq_stats == 0) or (self.getCurrentGeneration() == 0):
+               self.printStats()
+               #print self.bestIndividual()
+
+         if self.dbAdapter:
+            if self.currentGeneration % self.dbAdapter.getStatsGenFreq() == 0:
+               self.dumpStatsDB()
+
+         if stopFlagTerminationCriteria:
+            logging.debug("Evolution stopped by the Termination Criteria !")
             if freq_stats:
-               if (self.currentGeneration % freq_stats == 0) or (self.getCurrentGeneration() == 0):
-                  self.printStats()
+               print "\n\tEvolution stopped by Termination Criteria function !\n"
+            break
 
-            if self.dbAdapter:
-               if self.currentGeneration % self.dbAdapter.getStatsGenFreq() == 0:
-                  self.dumpStatsDB()
+         if stopFlagCallback:
+            logging.debug("Evolution stopped by Step Callback function !")
+            if freq_stats:
+               print "\n\tEvolution stopped by Step Callback function !\n"
+            break
 
-            if stopFlagTerminationCriteria:
-               logging.debug("Evolution stopped by the Termination Criteria !")
-               if freq_stats:
-                  print "\n\tEvolution stopped by Termination Criteria function !\n"
-               break
+         if self.interactiveMode:
+            if sys_platform[:3] == "win":
+               if msvcrt.kbhit():
+                  if ord(msvcrt.getch()) == Consts.CDefESCKey:
+                     print "Loading modules for Interactive Mode...",
+                     logging.debug("Windows Interactive Mode key detected ! generation=%d", self.getCurrentGeneration())
+                     from pyevolve import Interaction
+                     print " done !"
+                     interact_banner = "## Pyevolve v.%s - Interactive Mode ##\nPress CTRL-Z to quit interactive mode." % (pyevolve.__version__,)
+                     session_locals = { "ga_engine"  : self,
+                                        "population" : self.getPopulation(),
+                                        "pyevolve"   : pyevolve,
+                                        "it"         : Interaction}
+                     print
+                     code.interact(interact_banner, local=session_locals)
 
-            if stopFlagCallback:
-               logging.debug("Evolution stopped by Step Callback function !")
-               if freq_stats:
-                  print "\n\tEvolution stopped by Step Callback function !\n"
-               break
+            if (self.getInteractiveGeneration() >= 0) and (self.getInteractiveGeneration() == self.getCurrentGeneration()):
+                     print "Loading modules for Interactive Mode...",
+                     logging.debug("Manual Interactive Mode key detected ! generation=%d", self.getCurrentGeneration())
+                     from pyevolve import Interaction
+                     print " done !"
+                     interact_banner = "## Pyevolve v.%s - Interactive Mode ##" % (pyevolve.__version__,)
+                     session_locals = { "ga_engine"  : self,
+                                        "population" : self.getPopulation(),
+                                        "pyevolve"   : pyevolve,
+                                        "it"         : Interaction}
+                     print
+                     code.interact(interact_banner, local=session_locals)
 
-            if self.interactiveMode:
-               if sys_platform[:3] == "win":
-                  if msvcrt.kbhit():
-                     if ord(msvcrt.getch()) == Consts.CDefESCKey:
-                        print "Loading modules for Interactive Mode...",
-                        logging.debug("Windows Interactive Mode key detected ! generation=%d", self.getCurrentGeneration())
-                        from pyevolve import Interaction
-                        print " done !"
-                        interact_banner = "## Pyevolve v.%s - Interactive Mode ##\nPress CTRL-Z to quit interactive mode." % (pyevolve.__version__,)
-                        session_locals = { "ga_engine"  : self,
-                                           "population" : self.getPopulation(),
-                                           "pyevolve"   : pyevolve,
-                                           "it"         : Interaction}
-                        print
-                        code.interact(interact_banner, local=session_locals)
-
-               if (self.getInteractiveGeneration() >= 0) and (self.getInteractiveGeneration() == self.getCurrentGeneration()):
-                        print "Loading modules for Interactive Mode...",
-                        logging.debug("Manual Interactive Mode key detected ! generation=%d", self.getCurrentGeneration())
-                        from pyevolve import Interaction
-                        print " done !"
-                        interact_banner = "## Pyevolve v.%s - Interactive Mode ##" % (pyevolve.__version__,)
-                        session_locals = { "ga_engine"  : self,
-                                           "population" : self.getPopulation(),
-                                           "pyevolve"   : pyevolve,
-                                           "it"         : Interaction}
-                        print
-                        code.interact(interact_banner, local=session_locals)
-
-            if self.step(): break
-
-      except KeyboardInterrupt:
-         logging.debug("CTRL-C detected, finishing evolution.")
-         if freq_stats: print "\n\tA break was detected, you have interrupted the evolution !\n"
-
-      if freq_stats != 0:
-         self.printStats()
-         self.printTimeElapsed()
-
-      if self.dbAdapter:
-         logging.debug("Closing the DB Adapter")
-         if not (self.currentGeneration % self.dbAdapter.getStatsGenFreq() == 0):
-            self.dumpStatsDB()
-         self.dbAdapter.commitAndClose()
-   
-      if self.migrationAdapter:
-         logging.debug("Closing the Migration Adapter")
-         if freq_stats: print "Stopping the migration adapter... ",
-         self.migrationAdapter.stop()
-         if freq_stats: print "done !"
-
-      return self.bestIndividual()
+         if self.step(): break
+      return stop_evolution(signal.SIGUSR1, None)
 
    def select(self, **args):
       """ Select one individual from population
